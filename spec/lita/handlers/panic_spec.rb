@@ -7,6 +7,7 @@ describe Lita::Handlers::Panic, lita_handler: true do
 
   it { should route_command("how is everyone doing?").with_authorization_for(:instructors).to(:poll) }
   it { should route_command("how's everybody in #channel?").with_authorization_for(:instructors).to(:poll) }
+  it { should route_command("how’s everybody in #channel?").with_authorization_for(:instructors).to(:poll) }
   it { should route_command("1").to(:answer) }
   it { should route_command("Today was awful. Definitely a 6.").to(:answer) }
   it { should_not route_command("This is a response with no numbers") }

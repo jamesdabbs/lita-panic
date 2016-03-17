@@ -4,7 +4,7 @@ module Lita
       config :hostname, type: String, required: false
 
       route \
-        /how(?: i|\')s every\w+\s*(in \#([\w-]+))?/i,
+        /how(?: i|\'|\’)s every\w+\s*(in \#([\w-]+))?/i,
         :poll,
         command: true,
         restrict_to: [:instructors],
