@@ -1,10 +1,10 @@
 module Lita::Panic
   class Poll
     class << self
-      def create poster:, responders:, redis:
+      def create poster:, responders:, redis:, channel:
         start    = Time.now.to_f
         finish   = start.to_i + 12 * 60 * 60
-        poll_key = "poll:#{poster.id}:#{start}"
+        poll_key = "poll:#{channel.id}:#{poster.id}:#{start}"
 
         values = responders.map { |r| [r.id, ""] }.flatten
         redis.hmset poll_key, *values
@@ -19,12 +19,18 @@ module Lita::Panic
 
     def initialize key:, redis:
       @key, @redis = key, redis
-      pref, @poster_id, @at = key.split ":"
+      pref, @channel_id, @poster_id, @at = key.split ":"
+
       raise "Invalid poll key: #{key}" unless pref == "poll"
     end
 
+    # The user who asked the inital question.
     def poster
       @_poster ||= Lita::User.find_by_id(poster_id)
+    end
+
+    def channel
+      @_channel ||= Lita::Room.find_by_name(channel_id)
     end
 
     def created_at
@@ -44,6 +50,12 @@ module Lita::Panic
       @_to_h ||= redis.hgetall(key).freeze
     end
 
+    def user_responses
+      @_user_responses ||= to_h.each_with_object({}) do |(user_id, value), resp|
+        resp[Lita::User.find_by_id(user_id)] = value
+      end
+    end
+
     def responder_ids
       redis.hkeys key
     end
@@ -54,6 +66,6 @@ module Lita::Panic
 
     private
 
-    attr_reader :key, :redis, :poster_id, :at
+    attr_reader :key, :redis, :poster_id, :channel_id, :at
   end
 end

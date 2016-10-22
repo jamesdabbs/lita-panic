@@ -1,5 +1,4 @@
 require "spec_helper"
-
 describe Lita::Handlers::Panic, lita_handler: true do
   let!(:bob)   { build_user "bob" }
   let!(:lilly) { build_user "lilly", groups: [:instructors, :staff] }
@@ -10,10 +9,12 @@ describe Lita::Handlers::Panic, lita_handler: true do
   it { should route_command("how’s everybody in #channel?").with_authorization_for(:instructors).to(:poll) }
   it { should route_command("1").to(:answer) }
   it { should route_command("Today was awful. Definitely a 6.").to(:answer) }
+  it { should route_command("panic export").with_authorization_for(:instructors).to(:export) }
+  it { should route_command("panic export #lita.io").with_authorization_for(:instructors).to(:export) }
   it { should_not route_command("This is a response with no numbers") }
 
   describe "#poll" do
-    let(:roster) { [lilly, bob].map &:id }
+    let(:roster) { [lilly, bob].map(&:id) }
 
     before do
       allow(robot).to receive(:roster).and_return(roster)
@@ -25,7 +26,7 @@ describe Lita::Handlers::Panic, lita_handler: true do
       end
 
       it "asks everyony how they are doing" do
-        expect(replies.size).to eq 3
+        expect(replies.size).to eq 2
         expect(replies.first).to eq "I don't know. I'll ask them."
         expect(replies.last).to eq "Hey, how are you doing (on a scale of 1 (boredom) to 6 (panic))?"
       end
@@ -46,7 +47,7 @@ describe Lita::Handlers::Panic, lita_handler: true do
       end
 
       describe "with a larger class" do
-        let(:roster) { [lilly, bob, joe].map &:id }
+        let(:roster) { [lilly, bob, joe].map(&:id) }
 
         it "notifies the poller once everyone has responded" do
           expect { send_command("3", as: joe) }.not_to change { replies_to(lilly).count }
@@ -63,6 +64,20 @@ describe Lita::Handlers::Panic, lita_handler: true do
           send_command "3", as: joe
           send_command "2", as: bob
 
+          send_command "panic export #lita.io", as: lilly
+          token = replies_to(lilly).last.match(/panic\/(\S+)\/%23lita.io/)[1]
+
+          csv = http.get("/panic/#{token}/%23lita.io").body
+
+          joe_row = CSV.parse(csv, headers: true).find { |r| r["User"] == joe.name }
+          last_response = joe_row.to_a.pop.pop
+          expect(last_response).to eq "3"
+        end
+
+        it 'will produce a CSV of all rooms if no room provided' do
+          send_command "3", as: joe
+          send_command "2", as: bob
+
           send_command "panic export", as: lilly
           token = replies_to(lilly).last.match(/panic\/(\S+)/)[1]
 
@@ -74,10 +89,10 @@ describe Lita::Handlers::Panic, lita_handler: true do
         end
 
         it "protects CSV access with tokens" do
-          send_command "panic export", as: lilly
-          token = replies_to(lilly).last.match(/panic\/(\S+)/)[1]
+          send_command "panic export #lita.io", as: lilly
+          token = replies_to(lilly).last.match(/panic\/(\S+)\/%23lita.io/)[1]
 
-          response = http.get "/panic/#{token}-miss"
+          response = http.get "/panic/#{token}-miss/%23lita.io"
           expect(response.status).to eq 403
           expect(response.body).to be_empty
         end
@@ -95,7 +110,7 @@ describe Lita::Handlers::Panic, lita_handler: true do
       it "will respond with other errors" do
         allow(robot).to receive(:send_message).twice.and_raise("BOOM")
         send_command("how is everyone doing?", as: lilly, from: Lita::Room.create_or_update("#lita.io"))
-        expect(replies.size).to eq 3
+        expect(replies.size).to eq 2
         expect(replies.first).to eq "I don't know. I'll ask them."
         expect(replies.last).to match /Shoot, I couldn't reach \w+ because we hit this bug `BOOM`/
       end
