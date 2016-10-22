@@ -75,9 +75,11 @@ module Lita
       def pollable_users_for_room(channel, without_members_of: ['staff'])
         users = robot.roster(channel).map { |user_id| Lita::User.find_by_id user_id }
 
-        users.reject do |user|
+        users = users.reject do |user|
           without_members_of.any? {|group| Lita::Authorization.new(config).user_in_group?(user, group)}
         end
+
+        users.reject{|user| user.name == robot.mention_name}
       end
 
       def notify_poster_of_complete_poll(poll)
