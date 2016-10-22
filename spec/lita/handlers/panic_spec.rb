@@ -26,7 +26,7 @@ describe Lita::Handlers::Panic, lita_handler: true do
       end
 
       it "asks everyony how they are doing" do
-        expect(replies.size).to eq 3
+        expect(replies.size).to eq 2
         expect(replies.first).to eq "I don't know. I'll ask them."
         expect(replies.last).to eq "Hey, how are you doing (on a scale of 1 (boredom) to 6 (panic))?"
       end
@@ -110,7 +110,7 @@ describe Lita::Handlers::Panic, lita_handler: true do
       it "will respond with other errors" do
         allow(robot).to receive(:send_message).twice.and_raise("BOOM")
         send_command("how is everyone doing?", as: lilly, from: Lita::Room.create_or_update("#lita.io"))
-        expect(replies.size).to eq 3
+        expect(replies.size).to eq 2
         expect(replies.first).to eq "I don't know. I'll ask them."
         expect(replies.last).to match /Shoot, I couldn't reach \w+ because we hit this bug `BOOM`/
       end

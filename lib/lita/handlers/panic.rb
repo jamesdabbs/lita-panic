@@ -38,7 +38,8 @@ module Lita
 
         channel = channel_by(msg) {|m| m.matches[0][1]}
 
-        responders = robot.roster(channel).map { |user_id| Lita::User.find_by_id user_id }
+        responders = pollable_users_for_room(channel)
+
         Lita::Panic::Poll.create poster: msg.user, responders: responders, redis: redis, channel: channel
         responders.each { |user| ping_with_poll user, msg }
       end
@@ -63,6 +64,7 @@ module Lita
         end
       end
 
+
       def export msg
         token = Lita::Panic::Store.export_token_for(msg.user, redis: redis)
         room = msg.matches[0][0]
@@ -71,6 +73,15 @@ module Lita
       end
 
       private
+
+      def pollable_users_for_room(channel)
+        users = robot.roster(channel).map { |user_id| Lita::User.find_by_id user_id }
+
+        users.reject do |user|
+          Lita::Authorization.new(config).user_in_group?(user, 'staff') || \
+          Lita::Authorization.new(config).user_in_group?(user, 'instructors')
+        end
+      end
 
       def channel_by msg
         if name = yield(msg)
