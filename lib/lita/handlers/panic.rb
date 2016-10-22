@@ -83,9 +83,9 @@ module Lita
       end
 
       def notify_poster_of_complete_poll(poll)
-        msg =  "The results are in for <#{poll.channel.id}|#{poll.channel.name}>\n"
+        msg =  "The results are in for <##{poll.channel.id}|#{poll.channel.name}>\n"
         msg += poll.user_responses.map do |(user, response)|
-          "<@#{user.id}|#{user.name}>: #{response}"
+          "<@#{user.id}|#{user.mention_name}>: #{response}"
         end.join("\n")
 
         robot.send_message Source.new(user: poll.poster), msg
