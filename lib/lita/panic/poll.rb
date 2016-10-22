@@ -19,7 +19,14 @@ module Lita::Panic
 
     def initialize key:, redis:
       @key, @redis = key, redis
-      pref, @channel_id, @poster_id, @at = key.split ":"
+
+      # Handle keys that include a channel
+      if key.split(":").length == 4
+        pref, @channel_id, @poster_id, @at = key.split ":"
+      else
+        # Backwards compatibility
+        pref, @poster_id, @at = key.split ":"
+      end
 
       raise "Invalid poll key: #{key}" unless pref == "poll"
     end
