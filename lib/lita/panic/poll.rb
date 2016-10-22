@@ -37,7 +37,7 @@ module Lita::Panic
     end
 
     def channel
-      @_channel ||= Lita::Room.find_by_name(channel_id)
+      @_channel ||= Lita::Room.find_by_id(channel_id)
     end
 
     def created_at
