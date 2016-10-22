@@ -14,7 +14,7 @@ module Lita
         :answer,
         command: true
       route \
-        /panic export\s*(\#([\.\w-]+))?/i,
+        /panic export\s*(\#?([\.\w-]+))?/i,
         :export,
         command: true,
         restrict_to: [:instructors, :staff],
