@@ -37,7 +37,7 @@ RSpec.configure do |config|
     config.default_formatter = 'doc'
   end
 
-  config.profile_examples = ENV.fetch("RSPEC_PROFILE_COUNT", 10).to_i
+  # config.profile_examples = ENV.fetch("RSPEC_PROFILE_COUNT", 10).to_i
   config.order = :random
   Kernel.srand config.seed
 end

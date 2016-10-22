@@ -1,10 +1,10 @@
 module Lita::Panic
   class Poll
     class << self
-      def create poster:, responders:, redis:
+      def create poster:, responders:, redis:, channel:
         start    = Time.now.to_f
         finish   = start.to_i + 12 * 60 * 60
-        poll_key = "poll:#{poster.id}:#{start}"
+        poll_key = "poll:#{channel.id}:#{poster.id}:#{start}"
 
         values = responders.map { |r| [r.id, ""] }.flatten
         redis.hmset poll_key, *values
@@ -19,10 +19,12 @@ module Lita::Panic
 
     def initialize key:, redis:
       @key, @redis = key, redis
-      pref, @poster_id, @at = key.split ":"
+      pref, @channel, @poster_id, @at = key.split ":"
+
       raise "Invalid poll key: #{key}" unless pref == "poll"
     end
 
+    # The user who asked the inital question.
     def poster
       @_poster ||= Lita::User.find_by_id(poster_id)
     end

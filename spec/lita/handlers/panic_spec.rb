@@ -1,5 +1,4 @@
 require "spec_helper"
-
 describe Lita::Handlers::Panic, lita_handler: true do
   let!(:bob)   { build_user "bob" }
   let!(:lilly) { build_user "lilly", groups: [:instructors, :staff] }
@@ -10,6 +9,8 @@ describe Lita::Handlers::Panic, lita_handler: true do
   it { should route_command("how’s everybody in #channel?").with_authorization_for(:instructors).to(:poll) }
   it { should route_command("1").to(:answer) }
   it { should route_command("Today was awful. Definitely a 6.").to(:answer) }
+  it { should route_command("panic export").with_authorization_for(:instructors).to(:export) }
+  it { should route_command("panic export #lita.io").with_authorization_for(:instructors).to(:export) }
   it { should_not route_command("This is a response with no numbers") }
 
   describe "#poll" do
@@ -63,6 +64,20 @@ describe Lita::Handlers::Panic, lita_handler: true do
           send_command "3", as: joe
           send_command "2", as: bob
 
+          send_command "panic export #lita.io", as: lilly
+          token = replies_to(lilly).last.match(/panic\/(\S+)\/%23lita.io/)[1]
+
+          csv = http.get("/panic/#{token}/%23lita.io").body
+
+          joe_row = CSV.parse(csv, headers: true).find { |r| r["User"] == joe.name }
+          last_response = joe_row.to_a.pop.pop
+          expect(last_response).to eq "3"
+        end
+
+        it 'will produce a CSV of all rooms if no room provided' do
+          send_command "3", as: joe
+          send_command "2", as: bob
+
           send_command "panic export", as: lilly
           token = replies_to(lilly).last.match(/panic\/(\S+)/)[1]
 
@@ -74,10 +89,10 @@ describe Lita::Handlers::Panic, lita_handler: true do
         end
 
         it "protects CSV access with tokens" do
-          send_command "panic export", as: lilly
-          token = replies_to(lilly).last.match(/panic\/(\S+)/)[1]
+          send_command "panic export #lita.io", as: lilly
+          token = replies_to(lilly).last.match(/panic\/(\S+)\/%23lita.io/)[1]
 
-          response = http.get "/panic/#{token}-miss"
+          response = http.get "/panic/#{token}-miss/%23lita.io"
           expect(response.status).to eq 403
           expect(response.body).to be_empty
         end
