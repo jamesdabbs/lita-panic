@@ -19,7 +19,7 @@ module Lita::Panic
 
     def initialize key:, redis:
       @key, @redis = key, redis
-      pref, @channel, @poster_id, @at = key.split ":"
+      pref, @channel_id, @poster_id, @at = key.split ":"
 
       raise "Invalid poll key: #{key}" unless pref == "poll"
     end
@@ -27,6 +27,10 @@ module Lita::Panic
     # The user who asked the inital question.
     def poster
       @_poster ||= Lita::User.find_by_id(poster_id)
+    end
+
+    def channel
+      @_channel ||= Lita::Room.find_by_name(channel_id)
     end
 
     def created_at
@@ -46,6 +50,12 @@ module Lita::Panic
       @_to_h ||= redis.hgetall(key).freeze
     end
 
+    def user_responses
+      @_user_responses ||= to_h.each_with_object({}) do |(user_id, value), resp|
+        resp[Lita::User.find_by_id(user_id)] = value
+      end
+    end
+
     def responder_ids
       redis.hkeys key
     end
@@ -56,6 +66,6 @@ module Lita::Panic
 
     private
 
-    attr_reader :key, :redis, :poster_id, :at
+    attr_reader :key, :redis, :poster_id, :channel_id, :at
   end
 end

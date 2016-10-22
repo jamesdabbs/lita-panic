@@ -52,9 +52,7 @@ module Lita
         poll.record user: msg.user, response: msg.message.body
         msg.reply_privately "Roger, thanks for the feedback"
 
-        if poll.complete?
-          robot.send_message Source.new(user: poll.poster), "The results are in"
-        end
+        notify_poster_of_complete_poll(poll) if poll.complete?
 
         score = msg.match_data[:score].to_i
         if score > 4
@@ -80,6 +78,15 @@ module Lita
         users.reject do |user|
           without_members_of.any? {|group| Lita::Authorization.new(config).user_in_group?(user, group)}
         end
+      end
+
+      def notify_poster_of_complete_poll(poll)
+        msg =  "The results are in for <#{poll.channel.id}|#{poll.channel.name}>\n"
+        msg += poll.user_responses.map do |(user, response)|
+          "<@#{user.id}|#{user.name}>: #{response}"
+        end.join("\n")
+
+        robot.send_message Source.new(user: poll.poster), msg
       end
 
       def channel_by msg
