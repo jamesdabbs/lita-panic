@@ -74,12 +74,11 @@ module Lita
 
       private
 
-      def pollable_users_for_room(channel)
+      def pollable_users_for_room(channel, without_members_of: ['staff'])
         users = robot.roster(channel).map { |user_id| Lita::User.find_by_id user_id }
 
         users.reject do |user|
-          Lita::Authorization.new(config).user_in_group?(user, 'staff') || \
-          Lita::Authorization.new(config).user_in_group?(user, 'instructors')
+          without_members_of.any? {|group| Lita::Authorization.new(config).user_in_group?(user, group)}
         end
       end
 
