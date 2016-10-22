@@ -14,7 +14,7 @@ describe Lita::Handlers::Panic, lita_handler: true do
   it { should_not route_command("This is a response with no numbers") }
 
   describe "#poll" do
-    let(:roster) { [lilly, bob].map &:id }
+    let(:roster) { [lilly, bob].map(&:id) }
 
     before do
       allow(robot).to receive(:roster).and_return(roster)
@@ -47,7 +47,7 @@ describe Lita::Handlers::Panic, lita_handler: true do
       end
 
       describe "with a larger class" do
-        let(:roster) { [lilly, bob, joe].map &:id }
+        let(:roster) { [lilly, bob, joe].map(&:id) }
 
         it "notifies the poller once everyone has responded" do
           expect { send_command("3", as: joe) }.not_to change { replies_to(lilly).count }
