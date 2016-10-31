@@ -23,6 +23,7 @@ module Lita
       http.get "/panic/:token(/:channel)" do |request, response|
         token = request.env["router.params"][:token]
         channel = request.env["router.params"][:channel]
+        channel = Lita::Room.find_by_name(channel).id if channel
 
         user  = Lita::Panic::Store.user_from_token token, redis: redis
         if user
