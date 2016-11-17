@@ -139,7 +139,11 @@ module Lita
           begin
             attempts = timer.instance_variable_get(:@attempts).to_i
             poll = user_has_open_poll?(user)
-            timer.stop unless poll
+            
+            unless poll
+              timer.stop
+              return
+            end
 
             if attempts >= MAX_NAGS
               log.info "Giving up on #{user.mention_name}"
