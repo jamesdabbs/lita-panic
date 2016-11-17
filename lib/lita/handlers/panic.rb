@@ -1,20 +1,24 @@
+require 'concurrent'
+
 module Lita
   module Handlers
     class Panic < Handler
+      NAG_INTERVAL = 30 * 60
+      MAX_NAGS = 3
       config :hostname, type: String, required: false
 
       route \
-        /how(?: i|\'|\’)s every\w+\s*(in \#([\w-]+))?/i,
+        (/how(?: i|\'|\’)s every\w+\s*(in \#([\w-]+))?/i),
         :poll,
         command: true,
         restrict_to: [:instructors],
         help: { "how's everyone (in #room)?" => "start a new panic poll" }
       route \
-        /^\D*(?<score>\d)\D*$/,
+        (/^\D*(?<score>\d)\D*$/),
         :answer,
         command: true
       route \
-        /panic export\s*(\#?([\.\w-]+))?/i,
+        (/panic export\s*(\#?([\.\w-]+))?/i),
         :export,
         command: true,
         restrict_to: [:instructors, :staff],
@@ -42,7 +46,7 @@ module Lita
         responders = pollable_users_for_room(channel)
 
         Lita::Panic::Poll.create poster: msg.user, responders: responders, redis: redis, channel: channel
-        responders.each { |user| ping_with_poll user, msg }
+        responders.each { |user| ping_with_poll user, msg.user }
       end
 
 
@@ -73,6 +77,10 @@ module Lita
 
       private
 
+      def user_has_open_poll?(user)
+        Lita::Panic::Poll.for user: user, redis: redis
+      end
+
       def pollable_users_for_room(channel, without_members_of: ['staff'])
         users = robot.roster(channel).map { |user_id| Lita::User.find_by_id user_id }
 
@@ -81,6 +89,20 @@ module Lita
         end
 
         users.reject{|user| user.name == robot.mention_name}
+      end
+
+      def users_with_open_polls
+        robot.redis.keys.
+                select  { |k| k.start_with?("open:") }.
+                map     { |k| k.split(':').last }.
+                map     { |id| Lita::User.find_by_id(id) }
+      end
+
+      def message_users_with_open_polls!
+        users_with_open_polls.each do |user|
+          poll = Lita::Panic::Poll.for user: user, redis: redis
+          ping_with_poll user, poll.poster
+        end
       end
 
       def notify_poster_of_complete_poll(poll)
@@ -100,14 +122,44 @@ module Lita
         end
       end
 
-      def ping_with_poll user, response
+      def ping_with_poll user, poster
         return if user.mention_name == robot.mention_name
 
         robot.send_message Source.new(user: user),
           "Hey, how are you doing (on a scale of 1 (boredom) to 6 (panic))?"
+        send_reminder(user)
       rescue RuntimeError => e
         unless e.message =~ /cannot_dm_bot/
-          response.reply_privately("Shoot, I couldn't reach #{user.mention_name} because we hit this bug `#{e.message}`")
+          robot.send_message Source.new(user: poster), "Shoot, I couldn't reach #{user.mention_name} because we hit this bug `#{e.message}`"
+        end
+      end
+
+      def send_reminder user
+        every(NAG_INTERVAL) do |timer|
+          begin
+            attempts = timer.instance_variable_get(:@attempts).to_i
+            poll = user_has_open_poll?(user)
+            timer.stop unless poll
+
+            if attempts >= MAX_NAGS
+              log.info "Giving up on #{user.mention_name}"
+              timer.stop
+              return
+            end
+
+            attempts += 1
+            back_off = NAG_INTERVAL * attempts ** 2
+            timer.instance_variable_set(:@attempts, attempts)
+            timer.instance_variable_set(:@interval, back_off)
+
+            log.info "Trying #{user.mention_name} again for poll in #{poll.channel.name} by #{poll.poster.mention_name}, we have made #{attempts} attempts. waiting for #{back_off} seconds"
+
+            robot.send_message Source.new(user: user),
+              "Hey, I haven't heard from you. How are you doing (on a scale of 1 (boredom) to 6 (panic))?"
+          rescue => e
+            log.error e
+          end
+
         end
       end
 

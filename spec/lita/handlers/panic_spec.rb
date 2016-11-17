@@ -52,12 +52,12 @@ describe Lita::Handlers::Panic, lita_handler: true do
         it "notifies the poller once everyone has responded" do
           expect { send_command("3", as: joe) }.not_to change { replies_to(lilly).count }
           expect { send_command("2", as: bob) }.to change { replies_to(lilly).count }.by 1
-          expect(replies_to(lilly).last).to match /results are in/i
+          expect(replies_to(lilly).last).to match(/results are in/i)
         end
 
         it "does notify the poller if anyone is panicked" do
           send_command("6", as: joe)
-          expect(replies_to(lilly).last).to match /Joe is at a 6/
+          expect(replies_to(lilly).last).to match(/Joe is at a 6/)
         end
 
         it "produces a CSV" do
@@ -108,11 +108,13 @@ describe Lita::Handlers::Panic, lita_handler: true do
       end
 
       it "will respond with other errors" do
-        allow(robot).to receive(:send_message).twice.and_raise("BOOM")
+        expect(robot).to receive(:send_message).with(any_args, /how are you doing /).and_raise("BOOM")
+        allow(robot).to receive(:send_message).and_call_original
+
         send_command("how is everyone doing?", as: lilly, from: Lita::Room.create_or_update("#lita.io"))
         expect(replies.size).to eq 2
         expect(replies.first).to eq "I don't know. I'll ask them."
-        expect(replies.last).to match /Shoot, I couldn't reach \w+ because we hit this bug `BOOM`/
+        expect(replies.last).to match(/Shoot, I couldn't reach \w+ because we hit this bug `BOOM`/)
       end
     end
   end
