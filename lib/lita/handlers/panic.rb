@@ -91,20 +91,6 @@ module Lita
         users.reject{|user| user.name == robot.mention_name}
       end
 
-      def users_with_open_polls
-        robot.redis.keys.
-                select  { |k| k.start_with?("open:") }.
-                map     { |k| k.split(':').last }.
-                map     { |id| Lita::User.find_by_id(id) }
-      end
-
-      def message_users_with_open_polls!
-        users_with_open_polls.each do |user|
-          poll = Lita::Panic::Poll.for user: user, redis: redis
-          ping_with_poll user, poll.poster
-        end
-      end
-
       def notify_poster_of_complete_poll(poll)
         msg =  "The results are in for <##{poll.channel.id}|#{poll.channel.name}>\n"
         msg += poll.user_responses.map do |(user, response)|
@@ -139,7 +125,7 @@ module Lita
           begin
             attempts = timer.instance_variable_get(:@attempts).to_i
             poll = user_has_open_poll?(user)
-            
+
             unless poll
               timer.stop
               return
