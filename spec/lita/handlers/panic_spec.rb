@@ -36,6 +36,11 @@ describe Lita::Handlers::Panic, lita_handler: true do
         expect(replies_to(bob).last).to eq "Roger, thanks for the feedback"
       end
 
+      it "clears redis of pending polls" do
+        send_command("I'm okay. About a 4.", as: bob)
+        expect{send_command("I'm okay. About a 4.", as: bob)}.to_not change{replies_to(bob).size}
+      end
+
       it "does not respond to messages from public rooms" do
         expect do
           send_message("Here's a PR for marvin issue 4", as: bob, from: Lita::Room.create_or_update("#lita.io"))

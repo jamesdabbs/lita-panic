@@ -46,6 +46,7 @@ module Lita::Panic
 
     def record user:, response:
       redis.hset key, user.id, response
+      redis.del("open:#{user.id}")
     end
 
     def complete?
