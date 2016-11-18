@@ -26,7 +26,7 @@ module Lita::Panic
         user_ids = polls.map(&:responder_ids).flatten.uniq
 
         CSV.generate do |csv|
-          csv << ["User"] + polls.map { |p| p.created_at }
+          csv << ["User"] + polls.map { |p| p.created_at.iso8601 }
 
           user_ids.each do |id|
             user = Lita::User.find_by_id id
