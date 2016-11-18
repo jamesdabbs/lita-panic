@@ -37,7 +37,6 @@ module Lita
         end
       end
 
-
       def poll msg
         msg.reply "I don't know. I'll ask them."
 

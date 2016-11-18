@@ -20,6 +20,13 @@ describe Lita::Handlers::Panic, lita_handler: true do
       allow(robot).to receive(:roster).and_return(roster)
     end
 
+    it "reminds students who have not responded" do
+      allow_any_instance_of(Lita::Timer).to receive(:sleep)
+      send_command("how is everyone doing?", as: lilly, from: Lita::Room.create_or_update("#lita.io"))
+      sleep 0.1
+      expect(replies_to(bob).last).to eq "Hey, I haven't heard from you. How are you doing (on a scale of 1 (boredom) to 6 (panic))?"
+    end
+
     describe "with an active poll" do
       before do
         send_command("how is everyone doing?", as: lilly, from: Lita::Room.create_or_update("#lita.io"))
