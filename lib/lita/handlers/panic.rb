@@ -63,7 +63,7 @@ module Lita
         if poll
           notify_poster_of_complete_poll poll
         else
-          msg.reply "We don't have a current poll for this room? Did you start one?"
+          msg.reply "We don't any polls for this room? Did you start one?"
         end
       end
 
@@ -122,7 +122,7 @@ module Lita
         else
           msg =  "The current results for <##{poll.channel.id}|#{poll.channel.name}>\n"
         end
-        
+
         msg += poll.user_responses.map do |(user, response)|
           "<@#{user.id}|#{user.mention_name}>: #{response}"
         end.join("\n")
