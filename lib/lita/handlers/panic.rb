@@ -117,7 +117,12 @@ module Lita
       end
 
       def notify_poster_of_complete_poll(poll)
-        msg =  "The results are in for <##{poll.channel.id}|#{poll.channel.name}>\n"
+        if poll.complete?
+          msg =  "The results are in for <##{poll.channel.id}|#{poll.channel.name}>\n"
+        else
+          msg =  "The current results for <##{poll.channel.id}|#{poll.channel.name}>\n"
+        end
+        
         msg += poll.user_responses.map do |(user, response)|
           "<@#{user.id}|#{user.mention_name}>: #{response}"
         end.join("\n")
