@@ -5,17 +5,18 @@ module Lita
     class Panic < Handler
       NAG_INTERVAL = 30 * 60
       MAX_NAGS = 3
+      CHANNEL_REGEX=/\#(.*)/
       config :hostname, type: String, required: false
 
       route \
-        (/how(?: i|\'|\’)s every\w+\s*(in \#([\w-]+))?/i),
+        (/how(?: i|\'|\’)s every\w+\s*(in #{CHANNEL_REGEX})?/i),
         :poll,
         command: true,
         restrict_to: [:instructors],
         help: { "how's everyone (in #room)?" => "start a new panic poll" }
 
       route \
-        (/panic(?: status)*(?: of)+\s*(\#(.*))?/i),
+        (/panic(?: status)*(?: of)+\s*#{CHANNEL_REGEX}?/i),
         :status,
         command: true,
         restrict_to: [:instructors],
@@ -26,7 +27,7 @@ module Lita
         :answer,
         command: true
       route \
-        (/panic export\s*(\#?([\.\w-]+))?/i),
+        (/panic export\s*#{CHANNEL_REGEX}?/i),
         :export,
         command: true,
         restrict_to: [:instructors, :staff],
@@ -57,13 +58,17 @@ module Lita
       end
 
       def status msg
-        channel = channel_by(msg) {|m| m.matches[0][0]}
-        poll = most_recent_poll_for_channel(channel: channel, poster: msg.user)
+        channel = Lita::Room.find_by_name(msg.matches[0][0])
+
+        poll = most_recent_poll_for_channel(
+          channel: channel,
+          poster: msg.user
+        )
 
         if poll
           notify_poster_of_complete_poll poll
         else
-          msg.reply "We don't any polls for this room? Did you start one?"
+          msg.reply "We don't have any polls for this room? Did you start one?"
         end
       end
 

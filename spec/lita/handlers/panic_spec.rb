@@ -4,6 +4,8 @@ describe Lita::Handlers::Panic, lita_handler: true do
   let!(:lilly) { build_user "lilly", groups: [:instructors, :staff] }
   let!(:joe)   { build_user "joe" }
 
+  let!(:slack_room) { Lita::Room.create_or_update("C2K5FD831", {name: "lita.io"}) }
+
   it { should route_command("how is everyone doing?").with_authorization_for(:instructors).to(:poll) }
   it { should route_command("panic status of #channel?").with_authorization_for(:instructors).to(:status) }
   it { should route_command("panic of #channel?").with_authorization_for(:instructors).to(:status) }
@@ -25,14 +27,14 @@ describe Lita::Handlers::Panic, lita_handler: true do
 
     it "reminds students who have not responded" do
       allow_any_instance_of(Lita::Timer).to receive(:sleep)
-      send_command("how is everyone doing?", as: lilly, from: Lita::Room.create_or_update("#lita.io"))
+      send_command("how is everyone doing?", as: lilly, from: slack_room)
       sleep 0.1
       expect(replies_to(bob).last).to eq "Hey, I haven't heard from you. How are you doing (on a scale of 1 (boredom) to 6 (panic))?"
     end
 
     describe "with an active poll" do
       before do
-        send_command("how is everyone doing?", as: lilly, from: Lita::Room.create_or_update("#lita.io"))
+        send_command("how is everyone doing?", as: lilly, from: slack_room)
       end
 
       it "asks everyony how they are doing" do
@@ -53,7 +55,7 @@ describe Lita::Handlers::Panic, lita_handler: true do
 
       it "does not respond to messages from public rooms" do
         expect do
-          send_message("Here's a PR for marvin issue 4", as: bob, from: Lita::Room.create_or_update("#lita.io"))
+          send_message("Here's a PR for marvin issue 4", as: bob, from: slack_room)
         end.not_to change { replies.count }
       end
 
@@ -87,9 +89,9 @@ describe Lita::Handlers::Panic, lita_handler: true do
           send_command "2", as: bob
 
           send_command "panic export #lita.io", as: lilly
-          token = replies_to(lilly).last.match(/panic\/(\S+)\/%23lita.io/)[1]
+          token = replies_to(lilly).last.match(/panic\/(\S+)\/lita.io/)[1]
 
-          csv = http.get("/panic/#{token}/%23lita.io").body
+          csv = http.get("/panic/#{token}/lita.io").body
 
           joe_row = CSV.parse(csv, headers: true).find { |r| r["User"] == joe.name }
           last_response = joe_row.to_a.pop.pop
@@ -112,9 +114,9 @@ describe Lita::Handlers::Panic, lita_handler: true do
 
         it "protects CSV access with tokens" do
           send_command "panic export #lita.io", as: lilly
-          token = replies_to(lilly).last.match(/panic\/(\S+)\/%23lita.io/)[1]
+          token = replies_to(lilly).last.match(/panic\/(\S+)\/lita.io/)[1]
 
-          response = http.get "/panic/#{token}-miss/%23lita.io"
+          response = http.get "/panic/#{token}-miss/lita.io"
           expect(response.status).to eq 403
           expect(response.body).to be_empty
         end
@@ -124,7 +126,7 @@ describe Lita::Handlers::Panic, lita_handler: true do
     describe "error handling" do
       it "will silence cannot_dm_bot errors" do
         allow(robot).to receive(:send_message).twice.and_raise("Slack API call to im.open returned an error: cannot_dm_bot.")
-        send_command("how is everyone doing?", as: lilly, from: Lita::Room.create_or_update("#lita.io"))
+        send_command("how is everyone doing?", as: lilly, from: slack_room)
         expect(replies.size).to eq 1
         expect(replies.first).to eq "I don't know. I'll ask them."
       end
@@ -133,7 +135,7 @@ describe Lita::Handlers::Panic, lita_handler: true do
         expect(robot).to receive(:send_message).with(any_args, /how are you doing /).and_raise("BOOM")
         allow(robot).to receive(:send_message).and_call_original
 
-        send_command("how is everyone doing?", as: lilly, from: Lita::Room.create_or_update("#lita.io"))
+        send_command("how is everyone doing?", as: lilly, from: slack_room)
         expect(replies.size).to eq 2
         expect(replies.first).to eq "I don't know. I'll ask them."
         expect(replies.last).to match(/Shoot, I couldn't reach \w+ because we hit this bug `BOOM`/)
