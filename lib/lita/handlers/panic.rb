@@ -13,6 +13,14 @@ module Lita
         command: true,
         restrict_to: [:instructors],
         help: { "how's everyone (in #room)?" => "start a new panic poll" }
+
+      route \
+        (/panic(?: status)*(?: of)+\s*(\#(.*))?/i),
+        :status,
+        command: true,
+        restrict_to: [:instructors],
+        help: { "panic (status) (of) #room?" => "gets current answers for the active poll" }
+
       route \
         (/^\D*(?<score>\d)\D*$/),
         :answer,
@@ -48,6 +56,16 @@ module Lita
         responders.each { |user| ping_with_poll user, msg.user }
       end
 
+      def status msg
+        channel = channel_by(msg) {|m| m.matches[0][0]}
+        poll = most_recent_poll_for_channel(channel: channel, poster: msg.user)
+
+        if poll
+          notify_poster_of_complete_poll poll
+        else
+          msg.reply "We don't any polls for this room? Did you start one?"
+        end
+      end
 
       def answer msg
         poll = Lita::Panic::Poll.for user: msg.user, redis: redis
@@ -80,6 +98,14 @@ module Lita
         Lita::Panic::Poll.for user: user, redis: redis
       end
 
+      def most_recent_poll_for_channel(channel:, poster:)
+        redis.keys.
+                select  { |k| k.start_with?("poll:#{channel.id}:#{poster.id}") }.
+                map     { |k| Lita::Panic::Poll.new key: k, redis: redis }.
+                sort_by { |p| p.created_at }.
+                last
+      end
+
       def pollable_users_for_room(channel, without_members_of: ['staff'])
         users = robot.roster(channel).map { |user_id| Lita::User.find_by_id user_id }
 
@@ -91,7 +117,12 @@ module Lita
       end
 
       def notify_poster_of_complete_poll(poll)
-        msg =  "The results are in for <##{poll.channel.id}|#{poll.channel.name}>\n"
+        if poll.complete?
+          msg =  "The results are in for <##{poll.channel.id}|#{poll.channel.name}>\n"
+        else
+          msg =  "The current results for <##{poll.channel.id}|#{poll.channel.name}>\n"
+        end
+
         msg += poll.user_responses.map do |(user, response)|
           "<@#{user.id}|#{user.mention_name}>: #{response}"
         end.join("\n")
