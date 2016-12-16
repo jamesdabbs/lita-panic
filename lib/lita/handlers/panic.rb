@@ -5,7 +5,7 @@ module Lita
     class Panic < Handler
       NAG_INTERVAL = 30 * 60
       MAX_NAGS = 3
-      CHANNEL_REGEX=/\#(.*)/
+      CHANNEL_REGEX=/\#?(.*)/
       config :hostname, type: String, required: false
 
       route \
@@ -59,7 +59,6 @@ module Lita
 
       def status msg
         channel = Lita::Room.find_by_name(msg.matches[0][0])
-
         poll = most_recent_poll_for_channel(
           channel: channel,
           poster: msg.user
