@@ -5,6 +5,9 @@ describe Lita::Handlers::Panic, lita_handler: true do
   let!(:joe)   { build_user "joe" }
 
   it { should route_command("how is everyone doing?").with_authorization_for(:instructors).to(:poll) }
+  it { should route_command("panic status of #channel?").with_authorization_for(:instructors).to(:status) }
+  it { should route_command("panic of #channel?").with_authorization_for(:instructors).to(:status) }
+  it { should_not route_command("panic status #channel?").with_authorization_for(:instructors).to(:status) }
   it { should route_command("how's everybody in #channel?").with_authorization_for(:instructors).to(:poll) }
   it { should route_command("how’s everybody in #channel?").with_authorization_for(:instructors).to(:poll) }
   it { should route_command("1").to(:answer) }
@@ -70,6 +73,13 @@ describe Lita::Handlers::Panic, lita_handler: true do
         it "does notify the poller if anyone is panicked" do
           send_command("6", as: joe)
           expect(replies_to(lilly).last).to match(/Joe is at a 6/)
+        end
+
+        it "can be asked for the status of a room by the poster" do
+          send_command "3", as: joe
+          send_command("panic of #lita.io", as: lilly)
+          expect(replies_to(lilly).last).to match(/joe>: 3/)
+          expect(replies_to(lilly).last).to match(/bob>: \n/)
         end
 
         it "produces a CSV" do
