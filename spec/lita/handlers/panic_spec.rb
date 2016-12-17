@@ -8,6 +8,7 @@ describe Lita::Handlers::Panic, lita_handler: true do
 
   it { should route_command("how is everyone doing?").with_authorization_for(:instructors).to(:poll) }
   it { should route_command("panic status of #channel?").with_authorization_for(:instructors).to(:status) }
+  it { should route_command("panic status of channel?").with_authorization_for(:instructors).to(:status) }
   it { should route_command("panic of #channel?").with_authorization_for(:instructors).to(:status) }
   it { should_not route_command("panic status #channel?").with_authorization_for(:instructors).to(:status) }
   it { should route_command("how's everybody in #channel?").with_authorization_for(:instructors).to(:poll) }
@@ -41,6 +42,12 @@ describe Lita::Handlers::Panic, lita_handler: true do
         expect(replies.size).to eq 2
         expect(replies.first).to eq "I don't know. I'll ask them."
         expect(replies.last).to eq "Hey, how are you doing (on a scale of 1 (boredom) to 6 (panic))?"
+      end
+
+      it "can be asked for status" do
+        send_command("panic of lita.io?", as: lilly)
+        expect(replies_to(lilly).last).to match(/bob/)
+        expect(replies_to(lilly).last).to match(/The current results/)
       end
 
       it "records feedback" do
