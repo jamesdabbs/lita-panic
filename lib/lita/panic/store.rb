@@ -17,11 +17,15 @@ module Lita::Panic
         tokens.keys.find { |user_id| tokens[user_id] == token }
       end
 
-      def to_csv redis:, channel: nil
-        polls = redis.keys.
-                select  { |k| k.start_with?("poll:#{channel}") }.
+      def polls_for_channel redis:, channel_id: nil
+        redis.keys.
+                select  { |k| k.start_with?("poll:#{channel_id}") }.
                 map     { |k| Poll.new key: k, redis: redis }.
                 sort_by { |p| p.created_at }
+      end
+
+      def to_csv redis:, channel: nil
+        polls = polls_for_channel redis: redis, channel_id: channel
 
         user_ids = polls.map(&:responder_ids).flatten.uniq
 

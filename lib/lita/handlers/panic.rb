@@ -61,8 +61,7 @@ module Lita
         channel = Lita::Room.find_by_name(msg.matches[0][0])
 
         poll = most_recent_poll_for_channel(
-          channel: channel,
-          poster: msg.user
+          channel: channel
         )
 
         if poll
@@ -103,12 +102,8 @@ module Lita
         Lita::Panic::Poll.for user: user, redis: redis
       end
 
-      def most_recent_poll_for_channel(channel:, poster:)
-        redis.keys.
-                select  { |k| k.start_with?("poll:#{channel.id}:#{poster.id}") }.
-                map     { |k| Lita::Panic::Poll.new key: k, redis: redis }.
-                sort_by { |p| p.created_at }.
-                last
+      def most_recent_poll_for_channel(channel:)
+        Lita::Panic::Store.polls_for_channel(redis: redis, channel_id: channel.id).last
       end
 
       def pollable_users_for_room(channel, without_members_of: ['staff'])
