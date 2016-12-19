@@ -65,7 +65,7 @@ module Lita
         )
 
         if poll
-          notify_poster_of_complete_poll poll
+          notify_of_complete_poll poll: poll, user: msg.user
         else
           msg.reply "We don't have any polls for this room? Did you start one?"
         end
@@ -78,7 +78,7 @@ module Lita
         poll.record user: msg.user, response: msg.message.body
         msg.reply_privately "Roger, thanks for the feedback"
 
-        notify_poster_of_complete_poll(poll) if poll.complete?
+        notify_of_complete_poll poll: poll if poll.complete?
 
         score = msg.match_data[:score].to_i
         if score > 4
@@ -116,18 +116,20 @@ module Lita
         users.reject{|user| user.name == robot.mention_name}
       end
 
-      def notify_poster_of_complete_poll(poll)
+      def notify_of_complete_poll(user: nil, poll:)
+        user_to_notify = user || poll.poster
+
         if poll.complete?
           msg =  "The results are in for <##{poll.channel.id}|#{poll.channel.name}>\n"
         else
           msg =  "The current results for <##{poll.channel.id}|#{poll.channel.name}>\n"
         end
 
-        msg += poll.user_responses.map do |(user, response)|
-          "<@#{user.id}|#{user.mention_name}>: #{response}"
+        msg += poll.user_responses.map do |(u, response)|
+          "<@#{u.id}|#{u.mention_name}>: #{response}"
         end.join("\n")
 
-        robot.send_message Source.new(user: poll.poster), msg
+        robot.send_message Source.new(user: user_to_notify), msg
       end
 
       def channel_by msg
